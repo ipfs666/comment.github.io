@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>公司点评网,首家基于NAS区块链运营的点评网站</title>
+    <link href="./comment/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./comment/style.css">
+<link rel="stylesheet" href="./comment/layer.css" id="layuicss-layer"><style type="text/css"></style></head>
+
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container dw">
+        <div class="navbar-header">
+              <img src="./comment/logo.png" style="display: inline-block;float: left;margin-right: 10px;height:45px;line-height: 2">
+        </div>
+    </div>
+</nav>
+
+<div id="app" class="container main">
+
+    <div class="bj">
+       <div class="title">
+        <div id="divTyping" style="margin-bottom: 15px; display: inline-block;">
+          追求客观事实的点评，供后来者参考，一经发表将永久保存在区块链上，不可篡改！
+        </div> 
+        <div id="divTyping2">
+          敢于说出你内心真实的心声，匿名发表，纪录公司的点点滴滴！
+        </div>
+       </div> 
+       <div class="tip">
+         公司点评网，畅所欲言！说你想说！
+       </div> 
+
+
+
+
+        <div class="inp">
+            <div class="time" style="margin-top: 30px;">
+                <span>公司名称&nbsp;</span> 
+                <input class="names" id="schoolType" type="text" placeholder="请输入公司名称" />
+            </div> 
+            <div class="content">
+             <span style="padding-top: 12px;"></span> 
+             <textarea id="content" rows="4" placeholder="输入点评内容"></textarea>
+            </div> 
+            <div id="push" onclick="push()">
+              提交 
+            </div>
+       </div>
+    </div>
+
+   <div class="item-wrap">
+		<div class="item" v-for="item in list">
+           <div class="icon"></div> 
+           <div class="content">
+              <div class="name">
+                 <div>
+                  <img src="./comment/b.png" style="height: 28px;" /> 
+                  <span class="nc">{{getName(item.value)}}</span>
+                 </div> 
+                <span class="sc">{{item.key}}</span>
+              </div> 
+              <div class="text">
+                <span>{{getCont(item.value)}}</span>
+              </div>
+           </div>
+      </div>
+    
+   </div> 
+
+
+	
+  </div>
+
+
+<div class="footer">
+    <p>Copyright © 2018.基于星云链(NAS)开发运营
+        <a href="https://nebulas.io/" target="_blank">星云链</a>
+    </p>
+</div>
+<script src="./comment/jquery.min.js"></script>
+<script src="./comment/bootstrap.min.js"></script>
+<script src="./comment/layer.js"></script>
+<script src="./comment/nebPay.js"></script>
+<script src="./comment/vue"></script>
+<script>
+
+    var NebPay = require("nebpay");
+    var nebPay = new NebPay();
+
+    //检查扩展是否已安装
+    //如果安装了扩展，var“webExtensionWallet”将被注入到web页面中
+    if (typeof(webExtensionWallet) === "undefined") {
+        //alert ("扩展钱包未安装，请先安装.")
+        $("#noExtension").show();
+    }
+
+    var dappAddress = "n2228TvuJzsVEuBgHwVwLzRabimu4kFuXWp";
+    var initKey = '';
+    setInterval(function () {
+        getPredict(0);
+    }, 10000);
+    getPredict(0);
+
+    // 初始化
+    function getPredict(page) {
+        var to = dappAddress;
+        var value = "0";
+        var callFunction = "listByPage";
+        var callArgs = "[1000," + page * 10 + "]";
+        nebPay.simulateCall(to, value, callFunction, callArgs, {
+            listener: cbSearch
+        });
+    }
+
+    //return of search,
+    function cbSearch(resp) {
+        $('#app').show();
+        if (!resp.result) return;
+        var result = eval(JSON.parse(resp.result));
+        if (result !== 'null') {
+            Vue.set(app, 'list', result)
+        }
+    }
+
+    // 提交
+    function push() {
+        var schoolType = $('#schoolType').val();
+        var content = $('#content').val();
+        if (schoolType == '') {
+            layer.msg('公司名称不能为空');
+            return;
+        } else if (content == '') {
+            layer.msg('点评内容不能为空');
+            return;
+        }
+
+        initKey = RndNum(3);
+        var to = dappAddress;
+        var value = "0";
+        var callFunction = "set"
+        var callArgs = [];
+        callArgs.push(initKey);
+        callArgs.push(schoolType + '|-|' + content);
+        nebPay.call(to, value, callFunction, JSON.stringify(callArgs), {
+            listener: cbPush
+        });
+    }
+
+    function cbPush(resp) {
+        console.log("response of push: " + resp);
+        $("#word").val('')
+    }
+
+    //产生随机数函数
+    function RndNum(n) {
+        var rnd = "";
+        for (var i = 0; i < n; i++)
+            rnd += Math.floor(Math.random() * 10);
+        return rnd;
+    }
+
+    var app = new Vue({
+        el: '#app',
+        data: {
+            list: []
+        },
+        methods: {
+            getName: function (text) {
+                if (text) {
+                    var val=text.split('|-|')[0];
+                    return val;
+                } else {
+                    return ' ';
+                }
+
+            },
+            getCont: function (text) {
+                if (text) {
+                    return text.split('|-|')[1];
+                } else {
+                    return ' ';
+                }
+            },
+            getKey: function (text) {
+                if (text) {
+                    var len = text.length;
+                    return text.substring(0, 15) + '...' + text.substring(25, len - 3);
+                } else {
+                    return ' ';
+                }
+            }
+        }
+    })
+
+    // var str = '还在忍受公司的剥削敢怒不敢言吗？';
+    // var i = 0;
+
+    // function typing() {
+    //     var divTyping = document.getElementById('divTyping');
+    //     if (i <= str.length) {
+    //         divTyping.innerHTML = str.slice(0, i++) + '|';
+    //         // setTimeout('typing()', 200);//递归调用
+    //     }
+    //     else {
+    //         divTyping.innerHTML = str;//结束打字,移除 _ 光标
+    //         typing2();
+    //     }
+    // }
+
+    // typing();
+
+    // var str2 = '还在想炫耀公司福利无处可寻吗？';
+    // var i2 = 0;
+
+    // function typing2() {
+    //     var divTyping2 = document.getElementById('divTyping2');
+    //     if (i2 <= str2.length) {
+    //         divTyping2.innerHTML = str2.slice(0, i2++) + '|';
+    //         // setTimeout('typing()', 200);//递归调用
+    //     }
+    //     else {
+    //         divTyping2.innerHTML = str2;//结束打字,移除 _ 光标
+    //     }
+    // }
+
+</script></body></html>
